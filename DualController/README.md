@@ -65,6 +65,7 @@ Windows Installer is launched through Inno Setup's native System directory
 helper. Dependency logs are retained under
 `%ProgramData%\DualController\InstallerLogs\<timestamp>` after setup closes,
 including runtime and bus installer logs and a summary of exit codes.
-The build workflow also installs the full package on its Windows runner and
-uploads these logs, so compilation alone cannot pass the installation check.
-The runner has no physical controllers; device operation still needs testing.
+The build workflow installs the PS3 USB and PS4 components on its Windows runner
+and uploads these logs, so compilation alone cannot pass the installation check.
+The runner has no Bluetooth radio or controllers; the Bluetooth package and
+physical device operation still need testing on a PC with that hardware.

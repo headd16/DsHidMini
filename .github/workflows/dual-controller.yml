@@ -80,25 +80,34 @@ jobs:
           path: DualController/artifacts/app/DualController.exe
           if-no-files-found: error
           retention-days: 30
-      - name: Install the full package on the Windows runner
+      - name: Install PS3 USB and PS4 components on the Windows runner
         shell: pwsh
         run: |
           $setup = Resolve-Path 'DualController/artifacts/installer/DualController-Setup-0.1.1-x64.exe'
           $log = Join-Path $env:RUNNER_TEMP 'dual-controller-install.log'
           $p = Start-Process -FilePath $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES',
-            '/NORESTART', '/RESTARTEXITCODE=3010', '/TYPE=full', "/LOG=$log" -Wait -PassThru
+            '/NORESTART', '/RESTARTEXITCODE=3010', '/COMPONENTS=bridge,ps3', "/LOG=$log" -Wait -PassThru
           Get-Content $log -Tail 100
-          if ($p.ExitCode -notin 0,3010) { throw "Full installer failed: $($p.ExitCode)" }
+          if ($p.ExitCode -notin 0,3010) { throw "Installer failed: $($p.ExitCode)" }
           if (-not (Test-Path "$env:ProgramFiles/DualController/DualController.exe")) {
             throw 'Installed bridge executable missing'
           }
+      - name: Stage persistent installer diagnostics
+        if: always()
+        shell: pwsh
+        run: |
+          $destination = 'DualController/artifacts/install-diagnostics'
+          New-Item -ItemType Directory -Force $destination | Out-Null
+          if (Test-Path 'C:/ProgramData/DualController/InstallerLogs') {
+            Copy-Item 'C:/ProgramData/DualController/InstallerLogs/*' $destination -Recurse
+          }
+          $setupLog = Join-Path $env:RUNNER_TEMP 'dual-controller-install.log'
+          if (Test-Path $setupLog) { Copy-Item $setupLog $destination }
       - name: Collect persistent installer diagnostics
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: DualController-install-diagnostics
-          path: |
-            C:/ProgramData/DualController/InstallerLogs/
-            ${{ runner.temp }}/dual-controller-install.log
+          path: DualController/artifacts/install-diagnostics/
           if-no-files-found: warn
           retention-days: 30
