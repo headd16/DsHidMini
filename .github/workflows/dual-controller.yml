@@ -86,11 +86,28 @@ jobs:
           $setup = Resolve-Path 'DualController/artifacts/installer/DualController-Setup-0.1.1-x64.exe'
           $log = Join-Path $env:RUNNER_TEMP 'dual-controller-install.log'
           $p = Start-Process -FilePath $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES',
-            '/NORESTART', '/RESTARTEXITCODE=3010', '/COMPONENTS=bridge,ps3', "/LOG=$log" -Wait -PassThru
+            '/NORESTART', '/RESTARTEXITCODE=3010', '/COMPONENTS=bridge,ps3', "/LOG=$log" -PassThru
+          # Start-Process -Wait waits for the entire descendant tree, including
+          # Windows Installer's service and upstream background updater processes.
+          $handle = $p.Handle
+          $deadline = (Get-Date).AddMinutes(3)
+          while (-not $p.WaitForExit(10000)) {
+            if (Test-Path $log) { Get-Content $log -Tail 5 }
+            if ((Get-Date) -gt $deadline) {
+              & taskkill /PID $p.Id /T /F
+              throw 'Setup process did not exit within three minutes'
+            }
+          }
+          $p.Refresh()
           Get-Content $log -Tail 100
           if ($p.ExitCode -notin 0,3010) { throw "Installer failed: $($p.ExitCode)" }
           if (-not (Test-Path "$env:ProgramFiles/DualController/DualController.exe")) {
             throw 'Installed bridge executable missing'
+          }
+          $ps3Root = "$env:ProgramFiles/Nefarius Software Solutions/DsHidMini"
+          if (-not (Test-Path "$ps3Root/ControlApp.exe") -or
+              -not (Test-Path "$ps3Root/drivers/dshidmini.inf")) {
+            throw 'Installed PS3 control app or driver package missing'
           }
       - name: Stage persistent installer diagnostics
         if: always()
