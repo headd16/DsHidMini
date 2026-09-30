@@ -1,4 +1,4 @@
-#define ProductVersion "0.1.0"
+#define ProductVersion "0.1.1"
 
 [Setup]
 AppId={{134C5FB3-28AB-4336-A640-5661C826CE25}
@@ -67,29 +67,74 @@ Filename: "{app}\INSTALL.txt"; Description: "Read PS3 and PS4 connection steps";
 [Code]
 var
   DependencyRestart: Boolean;
+  DependencyLogDir: String;
+
+function EnsureDependencyLogs(): Boolean;
+begin
+  if DependencyLogDir = '' then
+    DependencyLogDir := ExpandConstant('{commonappdata}\DualController\InstallerLogs\') +
+      GetDateTimeString('yyyymmdd-hhnnss', '-', ':');
+  Result := ForceDirectories(DependencyLogDir);
+  if Result then Log('Permanent dependency logs: ' + DependencyLogDir);
+end;
+
+procedure WriteDependencyStatus(Name, Status: String);
+var
+  Lines: TArrayOfString;
+begin
+  SetArrayLength(Lines, 4);
+  Lines[0] := 'Dual Controller {#ProductVersion}';
+  Lines[1] := GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':');
+  Lines[2] := Name;
+  Lines[3] := Status;
+  SaveStringsToUTF8File(DependencyLogDir + '\summary.txt', Lines, True);
+  Log(Name + ': ' + Status);
+end;
 
 function RunDependency(Name, Parameters: String; Msi: Boolean): String;
 var
-  ProgramPath, Arguments: String;
+  ProgramPath, Arguments, LogPath: String;
   ExitCode: Integer;
+  Started: Boolean;
 begin
   Result := '';
+  if not EnsureDependencyLogs() then begin
+    Result := 'Could not create the installer log folder: ' + DependencyLogDir;
+    Exit;
+  end;
+  LogPath := DependencyLogDir + '\' + Name + '.log';
   ExtractTemporaryFile(Name);
   if Msi then begin
     ProgramPath := ExpandConstant('{sys}\msiexec.exe');
-    Arguments := '/i "' + ExpandConstant('{tmp}\' + Name) + '" /passive /norestart /l*v "' + ExpandConstant('{tmp}\' + Name + '.log') + '"';
+    Arguments := '/i "' + ExpandConstant('{tmp}\' + Name) +
+      '" /passive /norestart /l*vx! "' + LogPath + '"';
   end else begin
     ProgramPath := ExpandConstant('{tmp}\' + Name);
-    Arguments := Parameters;
+    Arguments := Parameters + ' /log "' + LogPath + '"';
   end;
   WizardForm.StatusLabel.Caption := 'Installing ' + Name + '...';
-  Log('Starting dependency: ' + Name);
-  if not Exec(ProgramPath, Arguments, '', SW_SHOW, ewWaitUntilTerminated, ExitCode) then
+  WriteDependencyStatus(Name, 'Starting. Log: ' + LogPath);
+  if Msi then
+    Started := ExecWithNativeSysDir(ProgramPath, Arguments, '', SW_SHOW,
+      ewWaitUntilTerminated, ExitCode)
+  else
+    Started := Exec(ProgramPath, Arguments, '', SW_SHOW, ewWaitUntilTerminated, ExitCode);
+  if not Started then
     Result := 'Could not start ' + Name + '. ' + SysErrorMessage(ExitCode)
   else if (ExitCode = 3010) or (ExitCode = 1641) then DependencyRestart := True
-  else if ExitCode <> 0 then
-    Result := Name + ' failed with exit code ' + IntToStr(ExitCode) + '. Review the installer log in your TEMP folder before retrying.';
-  if Result <> '' then Log(Result);
+  else if ExitCode <> 0 then begin
+    Result := Name + ' failed with exit code ' + IntToStr(ExitCode) + '.';
+    if ExitCode = 1618 then
+      Result := Result + ' Another Windows installation is running. Let it finish and retry.'
+    else if ExitCode = 1603 then
+      Result := Result + ' Windows Installer reported a fatal error; the log is required to identify its cause.';
+  end;
+  WriteDependencyStatus(Name, 'Exit code: ' + IntToStr(ExitCode));
+  if Result <> '' then begin
+    Result := Result + #13#10#13#10 + 'Logs are saved permanently at:' + #13#10 +
+      DependencyLogDir + #13#10#13#10 + 'Attach ' + Name + '.log and summary.txt when reporting this error.';
+    Log(Result);
+  end;
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

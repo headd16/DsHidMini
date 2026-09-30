@@ -1,4 +1,4 @@
-Dual Controller 0.1 — EXPERIMENTAL COMMUNITY BUILD
+Dual Controller 0.1.1 — EXPERIMENTAL COMMUNITY BUILD
 
 This fork adds a PS4 companion backend to DsHidMini. It is not an official
 Nefarius release. The installer itself and the new app are unsigned; the
@@ -6,7 +6,7 @@ bundled upstream driver installers retain their existing signatures.
 The app is compiled, but real-controller USB/Bluetooth testing is still required.
 
 INSTALL
-1. Run DualController-Setup-0.1.0-x64.exe on Windows 10 1809+ or Windows 11 x64.
+1. Run DualController-Setup-0.1.1-x64.exe on Windows 10 1809+ or Windows 11 x64.
 2. Choose the full installation for PS3 and PS4 with USB and Bluetooth.
 3. Restart Windows if requested, then open Dual Controller.
 
@@ -42,6 +42,10 @@ SCOPE AND LIMITATIONS
 - This does not promise compatibility with games that block virtual input.
 
 TROUBLESHOOT
+- If setup fails, open %ProgramData%\DualController\InstallerLogs in File
+  Explorer. Open the newest dated folder and attach the failing component's
+  .log file and summary.txt to your report. These files survive closing setup.
+  Error 1603 alone does not identify the cause.
 - Use the Logs button for %LOCALAPPDATA%\DualController\Logs\bridge.log.
 - PS3 problems: use the original DsHidMini ControlApp diagnostics.
 - PS4 missing: check Windows Bluetooth pairing, USB cable, and other mapping

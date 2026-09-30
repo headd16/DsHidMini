@@ -58,3 +58,13 @@ app/setup are unsigned; the included upstream driver packages remain signed.
 
 See [INSTALL.txt](INSTALL.txt) for user instructions and known limitations.
 The original driver's licensing and notices are retained.
+
+## Installer diagnostics (0.1.1)
+
+Windows Installer is launched through Inno Setup's native System directory
+helper. Dependency logs are retained under
+`%ProgramData%\DualController\InstallerLogs\<timestamp>` after setup closes,
+including runtime and bus installer logs and a summary of exit codes.
+The build workflow also installs the full package on its Windows runner and
+uploads these logs, so compilation alone cannot pass the installation check.
+The runner has no physical controllers; device operation still needs testing.
