@@ -31,7 +31,7 @@ Name: "custom"; Description: "Choose components"; Flags: iscustom
 
 [Components]
 Name: "bridge"; Description: "PS4 Xbox input bridge and signed ViGEmBus driver"; Types: full ps4 custom; Flags: fixed
-Name: "ps3"; Description: "PS3: signed DsHidMini driver, ControlApp and .NET 10 Desktop Runtime"; Types: full
+Name: "ps3"; Description: "PS3: signed DsHidMini driver, ControlApp and .NET 10 Desktop Runtime"; Types: full; Flags: checkablealone
 Name: "ps3\bluetooth"; Description: "PS3 Bluetooth: signed BthPS3 drivers"; Types: full
 
 [Tasks]
@@ -110,7 +110,10 @@ begin
       '" /passive /norestart /l*vx! "' + LogPath + '"';
   end else begin
     ProgramPath := ExpandConstant('{tmp}\' + Name);
-    Arguments := Parameters + ' /log "' + LogPath + '"';
+    if Name = 'ViGEmBus.exe' then
+      Arguments := Parameters + ' /L*V! "' + LogPath + '"'
+    else
+      Arguments := Parameters + ' /log "' + LogPath + '"';
   end;
   WizardForm.StatusLabel.Caption := 'Installing ' + Name + '...';
   WriteDependencyStatus(Name, 'Starting. Log: ' + LogPath);
@@ -150,7 +153,7 @@ begin
       if Result <> '' then Exit;
     end;
   end;
-  Result := RunDependency('ViGEmBus.exe', '/install /quiet /norestart', False);
+  Result := RunDependency('ViGEmBus.exe', '/exenoui /qn /norestart', False);
 end;
 
 function NeedRestart(): Boolean;

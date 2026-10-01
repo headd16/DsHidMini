@@ -61,6 +61,9 @@ The original driver's licensing and notices are retained.
 
 ## Installer diagnostics (0.1.1)
 
+ViGEmBus uses its Advanced Installer options (`/exenoui /qn /norestart`) and
+MSI logging, matching Microsoft's winget manifest for the same pinned binary.
+PS3 USB can be selected independently of the Bluetooth component.
 Windows Installer is launched through Inno Setup's native System directory
 helper. Dependency logs are retained under
 `%ProgramData%\DualController\InstallerLogs\<timestamp>` after setup closes,
