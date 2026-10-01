@@ -22,6 +22,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       SOURCE_RUN: '36860418440'
       SOURCE_COMMIT: '4990f9b0854e4d16dccc3e889815a4d9c3fbde8f'
+      RELEASE_COMMIT: ${{ github.sha }}
       RELEASE_TAG: dual-controller-v0.1.1
     steps:
       - name: Verify the successful source build
@@ -94,12 +95,12 @@ jobs:
           set -euo pipefail
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             target=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')
-            test "$target" = "$SOURCE_COMMIT"
+            test "$target" = "$RELEASE_COMMIT"
             gh release upload "$RELEASE_TAG" release-assets/* \
               --repo "$GITHUB_REPOSITORY" --clobber
           else
             gh release create "$RELEASE_TAG" release-assets/* \
-              --repo "$GITHUB_REPOSITORY" --target "$SOURCE_COMMIT" \
+              --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
               --title 'Dual Controller 0.1.1 — Experimental PS3 + PS4' \
               --prerelease --notes-file release-notes.md
           fi
