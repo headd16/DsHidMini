@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: publish-dual-controller-0.1.1
+  group: publish-dual-controller-0.1.2
   cancel-in-progress: false
 
 jobs:
@@ -20,10 +20,10 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      SOURCE_RUN: '36860418440'
-      SOURCE_COMMIT: '4990f9b0854e4d16dccc3e889815a4d9c3fbde8f'
+      SOURCE_RUN: '36862738008'
+      SOURCE_COMMIT: 'e096b9759f7fc711438d119194066fca8e95f2ae'
       RELEASE_COMMIT: ${{ github.sha }}
-      RELEASE_TAG: dual-controller-v0.1.1
+      RELEASE_TAG: dual-controller-v0.1.2
     steps:
       - name: Verify the successful source build
         shell: bash
@@ -36,36 +36,52 @@ jobs:
       - name: Download the previously built installer
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          name: DualController-Setup-0.1.1-x64
+          name: DualController-Setup-0.1.2-x64
           path: release-assets
           repository: headd16/DsHidMini
-          run-id: 36860418440
+          run-id: 36862738008
+          github-token: ${{ github.token }}
+      - name: Download reinstallation validation
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: DualController-install-diagnostics
+          path: validation
+          repository: headd16/DsHidMini
+          run-id: 36862738008
           github-token: ${{ github.token }}
       - name: Verify installer and prepare release notes
         shell: bash
         run: |
           set -euo pipefail
+          jq -e '.OldRenamedMsiExitCode == 1603 and
+            .OldSecureRepairFailureReproduced == true and
+            .CorrectedReinstallationExitCode == 0 and
+            .RetainedSourceAndAliasHashVerified == true and
+            .InstalledFilesVerified == true' validation/reinstallation-check.json
+          cp validation/reinstallation-check.json release-assets/
           cd release-assets
           printf '%s  %s\n' \
-            '70a541c20aa204258be675c5bb3ceb650fee71e45948f228c7e5801b18254ddd' \
-            'DualController-Setup-0.1.1-x64.exe' > SHA256SUMS.txt
+            '69efc448aa23a99085bd9ffbac92ba317875b3c05d32286b294872495a2ba541' \
+            'DualController-Setup-0.1.2-x64.exe' > SHA256SUMS.txt
           sha256sum --check SHA256SUMS.txt
           cd ..
           cat > release-notes.md <<'NOTES'
           ## Installer corrections
 
-          Corrected ViGEmBus installation options and MSI logging. PS3 USB
-          can now be selected independently of PS3 Bluetooth. Windows Installer
-          uses the native System directory launcher.
-          Dependency logs survive setup closing under
-          `%ProgramData%\DualController\InstallerLogs`. The error dialog shows
-          the exact folder. Error 1603 still requires the MSI log to identify
-          its machine-specific cause; these changes do not establish that
-          every 1603 failure is resolved.
+          Fixed a reported existing-install failure: Windows Installer had
+          remembered the upstream DsHidMini MSI filename, while older Dual
+          Controller setups supplied only `DsHidMini.msi`. Source lookup then
+          failed with error 1316 / SecureRepair / 1603.
+
+          This setup preserves the upstream MSI filenames and retains the
+          old short names as identical signed copies under
+          `%ProgramData%\DualController\PackageCache`. Logs remain under
+          `%ProgramData%\DualController\InstallerLogs` after setup closes.
+          The official driver contents, signatures and pinned hashes are unchanged.
 
           ## Download and install
 
-          Download **DualController-Setup-0.1.1-x64.exe** from Assets below.
+          Download **DualController-Setup-0.1.2-x64.exe** from Assets below.
           For Windows 10 1809+ / Windows 11 x64. Choose the full PS3 + PS4
           installation if your PC has a supported Bluetooth radio. For USB-only
           PS3 use, choose Custom and deselect PS3 Bluetooth. Set PS3 to XInput in DsHidMini ControlApp. Keep the
@@ -77,17 +93,21 @@ jobs:
           official Nefarius release. The new app and setup are unsigned; the
           included upstream driver installers retain their signatures.
 
-          Source build: 4990f9b0854e4d16dccc3e889815a4d9c3fbde8f.
+          Source build: e096b9759f7fc711438d119194066fca8e95f2ae.
           Windows build, 103 protocol/device-origin checks, native HID smoke
           check, dependency verification and installation of the PS3 USB and PS4
-          components on the Windows runner passed, including checking the installed
+          components and reinstallation on the Windows runner passed, including checking the installed
           PS3 control app and INF package. Physical-controller testing and installation on
           consumer Windows PCs and the Bluetooth package still need validation.
           The Windows runner has no Bluetooth radio. PS4 Xbox mapping uses retired
           ViGEmBus 1.22.0; PS4 motion, touchpad gestures and audio are not mapped.
 
+          The regression check reproduced SecureRepair error 1603 with the old
+          renamed MSI. Reinstallation with this setup then returned exit code 0.
+          See reinstallation-check.json for the recorded check results.
+
           This release publishes the exact installer from successful build
-          36860418440. SHA256SUMS.txt provides its verified checksum.
+          36862738008. SHA256SUMS.txt provides its verified checksum.
           NOTES
       - name: Publish installer assets
         shell: bash
@@ -101,7 +121,7 @@ jobs:
           else
             gh release create "$RELEASE_TAG" release-assets/* \
               --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
-              --title 'Dual Controller 0.1.1 — Experimental PS3 + PS4' \
+              --title 'Dual Controller 0.1.2 — Experimental PS3 + PS4' \
               --prerelease --notes-file release-notes.md
           fi
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,assets
