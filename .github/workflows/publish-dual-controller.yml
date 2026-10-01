@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: publish-dual-controller-0.1.0
+  group: publish-dual-controller-0.1.1
   cancel-in-progress: false
 
 jobs:
@@ -20,9 +20,9 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      SOURCE_RUN: '36777621469'
-      SOURCE_COMMIT: '6a6acdb5e0035eceff3fd16b56e5a4bd2f367171'
-      RELEASE_TAG: dual-controller-v0.1.0
+      SOURCE_RUN: '36860418440'
+      SOURCE_COMMIT: '4990f9b0854e4d16dccc3e889815a4d9c3fbde8f'
+      RELEASE_TAG: dual-controller-v0.1.1
     steps:
       - name: Verify the successful source build
         shell: bash
@@ -35,10 +35,10 @@ jobs:
       - name: Download the previously built installer
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          name: DualController-Setup-0.1.0-x64
+          name: DualController-Setup-0.1.1-x64
           path: release-assets
           repository: headd16/DsHidMini
-          run-id: 36777621469
+          run-id: 36860418440
           github-token: ${{ github.token }}
       - name: Verify installer and prepare release notes
         shell: bash
@@ -46,16 +46,28 @@ jobs:
           set -euo pipefail
           cd release-assets
           printf '%s  %s\n' \
-            '4b52e4aea610b7fb623c4efdfbcc0ba925573fd3d8911a5a3622d63b978588ec' \
-            'DualController-Setup-0.1.0-x64.exe' > SHA256SUMS.txt
+            '70a541c20aa204258be675c5bb3ceb650fee71e45948f228c7e5801b18254ddd' \
+            'DualController-Setup-0.1.1-x64.exe' > SHA256SUMS.txt
           sha256sum --check SHA256SUMS.txt
           cd ..
           cat > release-notes.md <<'NOTES'
+          ## Installer corrections
+
+          Corrected ViGEmBus installation options and MSI logging. PS3 USB
+          can now be selected independently of PS3 Bluetooth. Windows Installer
+          uses the native System directory launcher.
+          Dependency logs survive setup closing under
+          `%ProgramData%\DualController\InstallerLogs`. The error dialog shows
+          the exact folder. Error 1603 still requires the MSI log to identify
+          its machine-specific cause; these changes do not establish that
+          every 1603 failure is resolved.
+
           ## Download and install
 
-          Download **DualController-Setup-0.1.0-x64.exe** from Assets below.
+          Download **DualController-Setup-0.1.1-x64.exe** from Assets below.
           For Windows 10 1809+ / Windows 11 x64. Choose the full PS3 + PS4
-          installation. Set PS3 to XInput in DsHidMini ControlApp. Keep the
+          installation if your PC has a supported Bluetooth radio. For USB-only
+          PS3 use, choose Custom and deselect PS3 Bluetooth. Set PS3 to XInput in DsHidMini ControlApp. Keep the
           Dual Controller tray app running for PS4 Xbox input. Connection
           instructions are in INSTALL.txt.
 
@@ -64,15 +76,17 @@ jobs:
           official Nefarius release. The new app and setup are unsigned; the
           included upstream driver installers retain their signatures.
 
-          Source build: 6a6acdb5e0035eceff3fd16b56e5a4bd2f367171.
+          Source build: 4990f9b0854e4d16dccc3e889815a4d9c3fbde8f.
           Windows build, 103 protocol/device-origin checks, native HID smoke
-          check, installer compilation and dependency signature/hash checks
-          passed. Real-controller USB/Bluetooth operation and clean-PC
-          installation remain unverified. PS4 Xbox mapping uses retired
+          check, dependency verification and installation of the PS3 USB and PS4
+          components on the Windows runner passed, including checking the installed
+          PS3 control app and INF package. Physical-controller testing and installation on
+          consumer Windows PCs and the Bluetooth package still need validation.
+          The Windows runner has no Bluetooth radio. PS4 Xbox mapping uses retired
           ViGEmBus 1.22.0; PS4 motion, touchpad gestures and audio are not mapped.
 
           This release publishes the exact installer from successful build
-          36777621469. SHA256SUMS.txt provides its verified checksum.
+          36860418440. SHA256SUMS.txt provides its verified checksum.
           NOTES
       - name: Publish installer assets
         shell: bash
@@ -86,7 +100,7 @@ jobs:
           else
             gh release create "$RELEASE_TAG" release-assets/* \
               --repo "$GITHUB_REPOSITORY" --target "$SOURCE_COMMIT" \
-              --title 'Dual Controller 0.1.0 — Experimental PS3 + PS4' \
+              --title 'Dual Controller 0.1.1 — Experimental PS3 + PS4' \
               --prerelease --notes-file release-notes.md
           fi
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,assets
