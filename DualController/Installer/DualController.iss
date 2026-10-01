@@ -1,4 +1,4 @@
-#define ProductVersion "0.1.1"
+#define ProductVersion "0.1.2"
 
 [Setup]
 AppId={{134C5FB3-28AB-4336-A640-5661C826CE25}
@@ -48,8 +48,8 @@ Source: "..\DOTNET-THIRD-PARTY-NOTICES.txt"; DestDir: "{app}\licenses"; Flags: i
 Source: "..\artifacts\dependencies\verified-dependencies.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\artifacts\dependencies\ViGEmBus.exe"; Flags: dontcopy
 Source: "..\artifacts\dependencies\DesktopRuntime.exe"; Flags: dontcopy
-Source: "..\artifacts\dependencies\DsHidMini.msi"; Flags: dontcopy
-Source: "..\artifacts\dependencies\BthPS3.msi"; Flags: dontcopy
+Source: "..\artifacts\dependencies\Nefarius_DsHidMini_Drivers_x64_arm64_v3.17.1.msi"; Flags: dontcopy
+Source: "..\artifacts\dependencies\Nefarius_BthPS3_Drivers_x64_arm64_v3.2.0.msi"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\Dual Controller"; Filename: "{app}\DualController.exe"
@@ -93,7 +93,7 @@ end;
 
 function RunDependency(Name, Parameters: String; Msi: Boolean): String;
 var
-  ProgramPath, Arguments, LogPath: String;
+  ProgramPath, Arguments, LogPath, BinaryPath, CacheDir, LegacyName: String;
   ExitCode: Integer;
   Started: Boolean;
 begin
@@ -104,12 +104,39 @@ begin
   end;
   LogPath := DependencyLogDir + '\' + Name + '.log';
   ExtractTemporaryFile(Name);
+  BinaryPath := ExpandConstant('{tmp}\' + Name);
   if Msi then begin
+    // Windows Installer remembers the source filename. Preserve the upstream
+    // filename and retain aliases used by older Dual Controller builds so
+    // SecureRepair can find the same signed package in either case.
+    CacheDir := ExpandConstant('{commonappdata}\DualController\PackageCache\') +
+      GetSHA256OfFile(BinaryPath);
+    if not ForceDirectories(CacheDir) then begin
+      Result := 'Could not create the MSI source folder: ' + CacheDir;
+      Exit;
+    end;
+    if not FileCopy(BinaryPath, CacheDir + '\' + Name, False) then begin
+      Result := 'Could not retain the MSI source: ' + CacheDir + '\' + Name;
+      Exit;
+    end;
+    LegacyName := '';
+    if Name = 'Nefarius_DsHidMini_Drivers_x64_arm64_v3.17.1.msi' then
+      LegacyName := 'DsHidMini.msi'
+    else if Name = 'Nefarius_BthPS3_Drivers_x64_arm64_v3.2.0.msi' then
+      LegacyName := 'BthPS3.msi';
+    if LegacyName <> '' then begin
+      if not FileCopy(BinaryPath, CacheDir + '\' + LegacyName, False) then begin
+        Result := 'Could not retain the previous MSI source name: ' + CacheDir + '\' + LegacyName;
+        Exit;
+      end;
+    end;
+    BinaryPath := CacheDir + '\' + Name;
+    WriteDependencyStatus(Name, 'Retained signed MSI source: ' + BinaryPath);
     ProgramPath := ExpandConstant('{sys}\msiexec.exe');
-    Arguments := '/i "' + ExpandConstant('{tmp}\' + Name) +
+    Arguments := '/i "' + BinaryPath +
       '" /passive /norestart /l*vx! "' + LogPath + '"';
   end else begin
-    ProgramPath := ExpandConstant('{tmp}\' + Name);
+    ProgramPath := BinaryPath;
     if Name = 'ViGEmBus.exe' then
       Arguments := Parameters + ' /L*V! "' + LogPath + '"'
     else
@@ -146,10 +173,10 @@ begin
   if WizardIsComponentSelected('ps3') then begin
     Result := RunDependency('DesktopRuntime.exe', '/install /quiet /norestart', False);
     if Result <> '' then Exit;
-    Result := RunDependency('DsHidMini.msi', '', True);
+    Result := RunDependency('Nefarius_DsHidMini_Drivers_x64_arm64_v3.17.1.msi', '', True);
     if Result <> '' then Exit;
     if WizardIsComponentSelected('ps3\bluetooth') then begin
-      Result := RunDependency('BthPS3.msi', '', True);
+      Result := RunDependency('Nefarius_BthPS3_Drivers_x64_arm64_v3.2.0.msi', '', True);
       if Result <> '' then Exit;
     end;
   end;

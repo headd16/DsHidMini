@@ -59,6 +59,21 @@ app/setup are unsigned; the included upstream driver packages remain signed.
 See [INSTALL.txt](INSTALL.txt) for user instructions and known limitations.
 The original driver's licensing and notices are retained.
 
+## MSI source filename fix (0.1.2)
+
+An existing DsHidMini installation remembers
+`Nefarius_DsHidMini_Drivers_x64_arm64_v3.17.1.msi`. Older Dual Controller builds
+renamed this file to `DsHidMini.msi`. During reconfiguration Windows Installer
+looked for the remembered filename beside the renamed package and failed with
+error 1316 / SecureRepair / 1603. The supplied failure log identifies that exact
+missing filename.
+
+Setup now retains upstream MSI filenames in a content-addressed source folder
+under `%ProgramData%\DualController\PackageCache`. It also retains the previous
+short names as identical copies for installations made with older builds.
+The signed MSI contents and hashes are unchanged. The build workflow checks
+first installation and reinstallation, and records the old renamed-MSI result.
+
 ## Installer diagnostics (0.1.1)
 
 ViGEmBus uses its Advanced Installer options (`/exenoui /qn /norestart`) and

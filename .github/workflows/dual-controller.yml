@@ -69,21 +69,21 @@ jobs:
       - name: Upload installer and validation manifest
         uses: actions/upload-artifact@v7
         with:
-          name: DualController-Setup-0.1.1-x64
+          name: DualController-Setup-0.1.2-x64
           path: DualController/artifacts/installer/
           if-no-files-found: error
           retention-days: 30
       - name: Upload portable PS4 bridge
         uses: actions/upload-artifact@v7
         with:
-          name: DualController-Portable-0.1.1-x64
+          name: DualController-Portable-0.1.2-x64
           path: DualController/artifacts/app/DualController.exe
           if-no-files-found: error
           retention-days: 30
       - name: Install PS3 USB and PS4 components on the Windows runner
         shell: pwsh
         run: |
-          $setup = Resolve-Path 'DualController/artifacts/installer/DualController-Setup-0.1.1-x64.exe'
+          $setup = Resolve-Path 'DualController/artifacts/installer/DualController-Setup-0.1.2-x64.exe'
           $log = Join-Path $env:RUNNER_TEMP 'dual-controller-install.log'
           $p = Start-Process -FilePath $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES',
             '/NORESTART', '/RESTARTEXITCODE=3010', '/COMPONENTS=bridge,ps3', "/LOG=$log" -PassThru
@@ -109,6 +109,11 @@ jobs:
               -not (Test-Path "$ps3Root/drivers/dshidmini.inf")) {
             throw 'Installed PS3 control app or driver package missing'
           }
+      - name: Verify reinstallation after an existing PS3 installation
+        shell: pwsh
+        run: |
+          ./DualController/Installer/Test-Reinstallation.ps1 `
+            -SetupPath 'DualController/artifacts/installer/DualController-Setup-0.1.2-x64.exe'
       - name: Stage persistent installer diagnostics
         if: always()
         shell: pwsh

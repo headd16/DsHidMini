@@ -6,7 +6,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Authors>headd16 community fork</Authors>
     <Copyright>Community extension; upstream notices retained in THIRD-PARTY-NOTICES.txt</Copyright>
   </PropertyGroup>
